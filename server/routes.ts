@@ -92,14 +92,14 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Get user's tasks
+  // Get user's submitted tasks (not assigned tasks)
   app.get("/api/tasks/my", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
     try {
-      const tasks = await storage.getTasksByUser(req.user!.id);
+      const tasks = await storage.getUserSubmittedTasks(req.user!.id);
       res.json(tasks);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch tasks" });
@@ -150,12 +150,10 @@ export function registerRoutes(app: Express): Server {
         }
       }
 
-      // If rejected task was assigned, reassign it
+      // If rejected task was assigned, don't put it back in pending - user will see it as rejected in assigned tasks
       if (validatedData.status === "rejected" && task.assignedTo) {
-        await storage.updateTask(id, {
-          status: "assigned" as const,
-          rejectionReason: validatedData.rejectionReason,
-        });
+        // Rejected assigned tasks stay rejected and disappear from admin pending queue
+        // But users can still see them in their assigned tasks with rejection reason
       }
 
       // Notify the task submitter about the review decision

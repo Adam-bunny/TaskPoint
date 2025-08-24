@@ -27,6 +27,7 @@ interface Task {
   createdAt: string;
   proofFile?: string;
   completedAt?: string;
+  rejectionReason?: string;
 }
 
 function TaskCard({ task }: { task: Task }) {
@@ -116,6 +117,22 @@ function TaskCard({ task }: { task: Task }) {
             </div>
           </div>
         )}
+        
+        {task.status === "rejected" && (
+          <div className="bg-red-50 p-3 rounded-lg">
+            <div className="flex items-center space-x-2">
+              <AlertTriangle className="w-4 h-4 text-red-600" />
+              <span className="text-sm text-red-700 font-medium">
+                Task rejected by admin
+              </span>
+            </div>
+            {task.rejectionReason && (
+              <p className="text-sm text-red-600 mt-1">
+                Reason: {task.rejectionReason}
+              </p>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -136,15 +153,18 @@ export default function AssignedTasks() {
   }
 
   const activeTasks = assignedTasks.filter(task => 
-    ["assigned", "in_progress", "completed"].includes(task.status)
+    ["assigned", "in_progress"].includes(task.status)
   );
   const completedTasks = assignedTasks.filter(task => 
     task.status === "approved"
   );
+  const rejectedTasks = assignedTasks.filter(task => 
+    task.status === "rejected"
+  );
 
   return (
     <div className="space-y-6">
-      {activeTasks.length === 0 && completedTasks.length === 0 ? (
+      {activeTasks.length === 0 && completedTasks.length === 0 && rejectedTasks.length === 0 ? (
         <Card>
           <CardContent className="text-center py-12">
             <Target className="w-12 h-12 text-gray-400 mx-auto mb-4" />
@@ -181,6 +201,23 @@ export default function AssignedTasks() {
               </h3>
               <div className="space-y-4">
                 {completedTasks.map((task) => (
+                  <TaskCard 
+                    key={task.id} 
+                    task={task} 
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {rejectedTasks.length > 0 && (
+            <div>
+              <h3 className="text-lg font-semibold mb-4 flex items-center">
+                <AlertTriangle className="w-5 h-5 mr-2 text-red-600" />
+                Rejected Tasks ({rejectedTasks.length})
+              </h3>
+              <div className="space-y-4">
+                {rejectedTasks.map((task) => (
                   <TaskCard 
                     key={task.id} 
                     task={task} 

@@ -18,6 +18,7 @@ export interface IStorage {
   assignTask(task: AssignTask & { assignedBy: string; status: "assigned" }): Promise<Task>;
   getTaskById(id: string): Promise<Task | undefined>;
   getTasksByUser(userId: string): Promise<Task[]>;
+  getUserSubmittedTasks(userId: string): Promise<Task[]>;
   getAssignedTasks(userId: string): Promise<Task[]>;
   getPendingTasks(): Promise<Task[]>;
   getAllTasks(): Promise<Task[]>;
@@ -119,6 +120,14 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(tasks.createdAt));
   }
 
+  async getUserSubmittedTasks(userId: string): Promise<Task[]> {
+    return await db
+      .select()
+      .from(tasks)
+      .where(eq(tasks.submittedBy, userId))
+      .orderBy(desc(tasks.createdAt));
+  }
+
   async getAssignedTasks(userId: string): Promise<Task[]> {
     return await db
       .select()
@@ -131,7 +140,11 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(tasks)
-      .where(or(eq(tasks.status, "pending"), eq(tasks.status, "completed"), eq(tasks.status, "assigned")))
+      .where(or(
+        eq(tasks.status, "pending"), 
+        eq(tasks.status, "completed"),
+        and(eq(tasks.status, "assigned"), isNull(tasks.reviewedAt)) // Only unreviewed assigned tasks
+      ))
       .orderBy(desc(tasks.createdAt));
   }
 

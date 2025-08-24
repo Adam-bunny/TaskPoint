@@ -64,6 +64,27 @@ function ReviewModal({ task, onReview, isReviewing }: ReviewModalProps) {
             <p className="text-gray-900">{task.description}</p>
           </div>
           
+          {/* Show uploaded proof file in modal */}
+          {task.proofFile && (
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <i className="fas fa-file-pdf text-blue-600"></i>
+                  <span className="text-sm font-medium text-blue-700">Uploaded Proof File</span>
+                </div>
+                <a 
+                  href={task.proofFile} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  <i className="fas fa-external-link-alt mr-1"></i>
+                  View File
+                </a>
+              </div>
+            </div>
+          )}
+          
           <div className="flex items-center space-x-4">
             <Badge className={typeColors[task.type]}>
               {typeLabels[task.type]}
@@ -285,6 +306,25 @@ export default function TaskReviewQueue() {
                     <p className="text-sm text-gray-600 mb-4" data-testid={`pending-task-description-${task.id}`}>
                       {task.description}
                     </p>
+                    
+                    {/* Show uploaded proof file if exists */}
+                    {task.proofFile && (
+                      <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="flex items-center space-x-2">
+                          <i className="fas fa-file-pdf text-blue-600"></i>
+                          <span className="text-sm font-medium text-blue-700">Proof File Uploaded:</span>
+                          <a 
+                            href={task.proofFile} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800 underline text-sm"
+                            data-testid={`proof-file-link-${task.id}`}
+                          >
+                            View Uploaded File
+                          </a>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
                 

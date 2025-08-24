@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertTaskSchema, TASK_POINTS } from "@shared/schema";
@@ -10,6 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { Upload, FileText } from "lucide-react";
 import { z } from "zod";
 
 type TaskFormData = z.infer<typeof insertTaskSchema>;
@@ -25,6 +27,7 @@ const taskTypes = [
 export default function TaskSubmissionForm() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const form = useForm<TaskFormData>({
     resolver: zodResolver(insertTaskSchema),
@@ -37,7 +40,25 @@ export default function TaskSubmissionForm() {
 
   const submitTaskMutation = useMutation({
     mutationFn: async (data: TaskFormData) => {
-      const res = await apiRequest("POST", "/api/tasks", data);
+      const formData = new FormData();
+      formData.append('title', data.title);
+      formData.append('description', data.description);
+      formData.append('type', data.type);
+      
+      if (selectedFile) {
+        formData.append('proofFile', selectedFile);
+      }
+
+      const res = await fetch('/api/tasks', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || 'Failed to submit task');
+      }
+      
       return await res.json();
     },
     onSuccess: () => {
@@ -48,6 +69,7 @@ export default function TaskSubmissionForm() {
         description: "Your task has been submitted for review.",
       });
       form.reset();
+      setSelectedFile(null);
     },
     onError: (error: Error) => {
       toast({
@@ -57,6 +79,31 @@ export default function TaskSubmissionForm() {
       });
     },
   });
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.type !== 'application/pdf') {
+        toast({
+          title: "Invalid File Type",
+          description: "Please upload a PDF file as proof of completion.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (file.size > 10 * 1024 * 1024) { // 10MB
+        toast({
+          title: "File Too Large",
+          description: "Please upload a file smaller than 10MB.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setSelectedFile(file);
+    }
+  };
 
   const onSubmit = (data: TaskFormData) => {
     submitTaskMutation.mutate(data);
@@ -138,6 +185,44 @@ export default function TaskSubmissionForm() {
                 </FormItem>
               )}
             />
+
+            {/* File Upload Section */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Upload Proof File (Optional PDF)
+              </label>
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                <div className="space-y-2">
+                  <input
+                    type="file"
+                    accept=".pdf"
+                    onChange={handleFileChange}
+                    className="hidden"
+                    id="proof-file-upload"
+                    data-testid="input-proof-file-upload"
+                  />
+                  <label
+                    htmlFor="proof-file-upload"
+                    className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer"
+                  >
+                    Choose PDF File
+                  </label>
+                  <p className="text-xs text-gray-500">Maximum file size: 10MB</p>
+                </div>
+              </div>
+              
+              {selectedFile && (
+                <div className="mt-2 p-2 bg-green-50 rounded-lg">
+                  <div className="flex items-center space-x-2">
+                    <FileText className="w-4 h-4 text-green-600" />
+                    <span className="text-sm text-green-700 font-medium">
+                      {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(1)} MB)
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {selectedTypeData && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">

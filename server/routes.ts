@@ -55,7 +55,7 @@ export function registerRoutes(app: Express): Server {
   }, express.static('uploads'));
 
   // Task submission
-  app.post("/api/tasks", async (req, res) => {
+  app.post("/api/tasks", upload.single('proofFile'), async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Unauthorized" });
     }
@@ -63,11 +63,13 @@ export function registerRoutes(app: Express): Server {
     try {
       const validatedData = insertTaskSchema.parse(req.body);
       const points = TASK_POINTS[validatedData.type] || 0;
+      const proofFilePath = req.file ? `/uploads/proof-files/${req.file.filename}` : undefined;
       
       const task = await storage.createTask({
         ...validatedData,
         submittedBy: req.user!.id,
         points,
+        proofFile: proofFilePath,
       });
 
       // Notify all admins about new task submission

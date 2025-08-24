@@ -33,10 +33,6 @@ export default function AdminDashboard() {
     logoutMutation.mutate();
   };
 
-  const handleUserView = () => {
-    navigate("/");
-  };
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Navigation Header */}
@@ -53,14 +49,6 @@ export default function AdminDashboard() {
             </div>
             
             <div className="flex items-center space-x-4">
-              <Button 
-                variant="outline" 
-                onClick={handleUserView}
-                data-testid="button-user-view"
-              >
-                User View
-              </Button>
-              
               <div className="flex items-center space-x-3">
                 <div className="text-right text-sm">
                   <div className="font-medium text-gray-900" data-testid="text-admin-username">
@@ -152,6 +140,14 @@ export default function AdminDashboard() {
               </div>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Task Assignment Section */}
+        <div className="mb-8">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">Task Assignment</h2>
+            <TaskAssignmentForm />
+          </div>
         </div>
 
         {/* Leaderboard Section */}

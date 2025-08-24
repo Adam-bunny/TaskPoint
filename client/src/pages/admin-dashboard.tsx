@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Leaderboard from "@/components/leaderboard";
+import { TaskAssignmentForm } from "@/components/task-assignment-form";
 import { useQuery } from "@tanstack/react-query";
 
 interface AdminStats {

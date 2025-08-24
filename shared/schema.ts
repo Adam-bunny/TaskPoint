@@ -87,6 +87,8 @@ export const insertTaskSchema = createInsertSchema(tasks).pick({
   title: true,
   description: true,
   type: true,
+}).extend({
+  proofFile: z.string().optional(),
 });
 
 export const assignTaskSchema = createInsertSchema(tasks).pick({

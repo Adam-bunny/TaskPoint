@@ -52,11 +52,19 @@ export default function TaskSubmissionForm() {
       const res = await fetch('/api/tasks', {
         method: 'POST',
         body: formData,
+        credentials: 'include', // Ensure cookies are sent
       });
       
       if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || 'Failed to submit task');
+        let errorMessage = 'Failed to submit task';
+        try {
+          const error = await res.json();
+          errorMessage = error.message || errorMessage;
+        } catch {
+          // If response is not JSON, use generic error
+          errorMessage = res.status === 401 ? 'Please log in to submit tasks' : errorMessage;
+        }
+        throw new Error(errorMessage);
       }
       
       return await res.json();

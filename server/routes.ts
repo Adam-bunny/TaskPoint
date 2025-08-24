@@ -83,7 +83,12 @@ export function registerRoutes(app: Express): Server {
 
       res.status(201).json(task);
     } catch (error) {
-      res.status(400).json({ message: "Invalid task data" });
+      console.error("Task submission error:", error);
+      if (error instanceof Error) {
+        res.status(400).json({ message: error.message });
+      } else {
+        res.status(400).json({ message: "Invalid task data" });
+      }
     }
   });
 

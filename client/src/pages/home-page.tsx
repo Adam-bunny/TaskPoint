@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import TaskSubmissionForm from "@/components/task-submission-form";
 import TaskList from "@/components/task-list";
-import AssignedTasks from "@/components/assigned-tasks";
 import Leaderboard from "@/components/leaderboard";
 import { useQuery } from "@tanstack/react-query";
 
@@ -156,16 +155,11 @@ export default function HomePage() {
 
         {/* Task Management */}
         <div className="mb-8">
-          <Tabs defaultValue="assigned" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="assigned">Assigned Tasks</TabsTrigger>
-              <TabsTrigger value="submit">Submit Task</TabsTrigger>
+          <Tabs defaultValue="history" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="history">My Tasks</TabsTrigger>
+              <TabsTrigger value="submit">Submit Task</TabsTrigger>
             </TabsList>
-            
-            <TabsContent value="assigned" className="mt-6">
-              <AssignedTasks />
-            </TabsContent>
             
             <TabsContent value="submit" className="mt-6">
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

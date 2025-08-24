@@ -60,7 +60,7 @@ export default function TaskList() {
       <CardHeader>
         <CardTitle>My Tasks</CardTitle>
         <p className="text-sm text-gray-600 mt-1">
-          Your submitted tasks
+          All your tasks - submitted and assigned
         </p>
       </CardHeader>
       
@@ -96,9 +96,9 @@ export default function TaskList() {
                       {task.description}
                     </p>
                     {task.status === "rejected" && task.rejectionReason && (
-                      <div className="bg-error/5 border border-error/20 rounded-lg p-3 mb-3">
-                        <p className="text-sm text-error font-medium mb-1">Rejection Reason:</p>
-                        <p className="text-sm text-error" data-testid={`task-rejection-${task.id}`}>
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
+                        <p className="text-sm text-red-700 font-medium mb-1">Rejection Reason:</p>
+                        <p className="text-sm text-red-600" data-testid={`task-rejection-${task.id}`}>
                           {task.rejectionReason}
                         </p>
                       </div>
@@ -113,9 +113,15 @@ export default function TaskList() {
                         {task.points} points
                       </span>
                       {task.status === "approved" && (
-                        <span className="text-success">
+                        <span className="text-green-600">
                           <i className="fas fa-check mr-1"></i>
                           Approved
+                        </span>
+                      )}
+                      {task.assignedTo && (
+                        <span className="text-blue-600">
+                          <i className="fas fa-user-tag mr-1"></i>
+                          Assigned Task
                         </span>
                       )}
                     </div>

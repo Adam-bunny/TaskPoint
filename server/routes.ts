@@ -92,14 +92,14 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Get user's submitted tasks (not assigned tasks)
+  // Get all user's tasks (both submitted and assigned)
   app.get("/api/tasks/my", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
     try {
-      const tasks = await storage.getUserSubmittedTasks(req.user!.id);
+      const tasks = await storage.getTasksByUser(req.user!.id);
       res.json(tasks);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch tasks" });

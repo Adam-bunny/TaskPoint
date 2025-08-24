@@ -131,7 +131,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(tasks)
-      .where(or(eq(tasks.status, "pending"), eq(tasks.status, "completed")))
+      .where(or(eq(tasks.status, "pending"), eq(tasks.status, "completed"), eq(tasks.status, "assigned")))
       .orderBy(desc(tasks.createdAt));
   }
 

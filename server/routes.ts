@@ -106,7 +106,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Get pending tasks (admin only)
+  // Get pending tasks (admin only) - includes assigned tasks that need approval
   app.get("/api/tasks/pending", async (req, res) => {
     if (!req.isAuthenticated() || req.user!.role !== "admin") {
       return res.status(403).json({ message: "Admin access required" });
@@ -250,52 +250,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Complete assigned task without file upload (direct completion)
-  app.post("/api/tasks/:id/complete-assigned", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.sendStatus(401);
-    }
-
-    try {
-      const taskId = req.params.id;
-      const task = await storage.getTaskById(taskId);
-
-      if (!task || task.assignedTo !== req.user!.id) {
-        return res.status(404).json({ message: "Task not found or not assigned to you" });
-      }
-
-      if (task.status !== "assigned" && task.status !== "in_progress") {
-        return res.status(400).json({ message: "Task cannot be completed" });
-      }
-
-      // For assigned tasks, complete directly without requiring proof upload
-      const updatedTask = await storage.updateTask(taskId, {
-        status: "approved" as const,
-        reviewedBy: task.assignedBy || undefined, // Auto-approve assigned tasks
-        reviewedAt: new Date(),
-      });
-
-      // Award points immediately for assigned tasks
-      if (task.points) {
-        await storage.updateUserPoints(req.user!.id, task.points);
-      }
-
-      // Notify the admin who assigned the task
-      if (task.assignedBy) {
-        app.locals.sendNotification(task.assignedBy, {
-          type: 'task_completed',
-          title: 'Assigned Task Completed',
-          message: `${req.user!.username} has completed the assigned task: "${task.title}" and earned ${task.points} points.`,
-          taskId: task.id,
-          timestamp: new Date().toISOString(),
-        });
-      }
-
-      res.json(updatedTask);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to complete task" });
-    }
-  });
 
   // Complete assigned task with proof upload (for user-submitted tasks)
   app.post("/api/tasks/:id/complete", upload.single('proofFile'), async (req, res) => {

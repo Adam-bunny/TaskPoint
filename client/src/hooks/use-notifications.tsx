@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useAuth } from "./use-auth";
 import { useToast } from "./use-toast";
+import { queryClient } from "@/lib/queryClient";
 
 export function useNotifications() {
   const { user } = useAuth();
@@ -30,6 +31,13 @@ export function useNotifications() {
       ws.onmessage = (event) => {
         try {
           const notification = JSON.parse(event.data);
+          
+          // Invalidate relevant queries when tasks are updated
+          if (notification.type === 'task_reviewed' || notification.type === 'task_assigned') {
+            queryClient.invalidateQueries({ queryKey: ['/api/tasks/my'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/user/stats'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/leaderboard'] });
+          }
           
           // Show toast notification
           toast({

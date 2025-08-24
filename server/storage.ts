@@ -115,7 +115,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(tasks)
-      .where(eq(tasks.submittedBy, userId))
+      .where(or(eq(tasks.submittedBy, userId), eq(tasks.assignedTo, userId)))
       .orderBy(desc(tasks.createdAt));
   }
 
@@ -191,7 +191,9 @@ export class DatabaseStorage implements IStorage {
 
     const userTasks = await this.getTasksByUser(userId);
     const completedTasks = userTasks.filter(task => task.status === "approved").length;
-    const pendingTasks = userTasks.filter(task => task.status === "pending").length;
+    const pendingTasks = userTasks.filter(task => 
+      ["pending", "assigned", "in_progress", "completed"].includes(task.status)
+    ).length;
 
     // Calculate rank
     const [rankResult] = await db

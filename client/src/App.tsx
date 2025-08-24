@@ -14,8 +14,9 @@ function Router() {
   return (
     <Switch>
       <ProtectedRoute path="/" component={HomePage} />
-      <ProtectedRoute path="/admin" component={AdminDashboard} />
+      <ProtectedRoute path="/admin" component={AdminDashboard} adminOnly={true} />
       <Route path="/auth" component={AuthPage} />
+      <Route path="/admin/login" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>
   );

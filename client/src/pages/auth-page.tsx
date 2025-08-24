@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertUserSchema } from "@shared/schema";
@@ -20,7 +21,10 @@ type RegisterData = z.infer<typeof registerSchema>;
 
 export default function AuthPage() {
   const { user, loginMutation, registerMutation } = useAuth();
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
+  
+  // Check if this is admin login
+  const isAdminLogin = location.includes('/admin/login');
 
   const loginForm = useForm<LoginData>({
     resolver: zodResolver(loginSchema),
@@ -40,13 +44,41 @@ export default function AuthPage() {
 
   // Redirect if already logged in
   if (user) {
-    navigate("/");
-    return null;
+    if (isAdminLogin && user.role !== "admin") {
+      // Non-admin trying to access admin login - redirect to user dashboard
+      navigate("/");
+    } else if (isAdminLogin && user.role === "admin") {
+      // Admin already logged in - go to admin dashboard
+      navigate("/admin");
+    } else {
+      // Regular user login - go to user dashboard
+      navigate("/");
+    }
+    // Show loading while redirecting
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 bg-primary rounded-full animate-spin mx-auto mb-4"></div>
+          <p>Redirecting...</p>
+        </div>
+      </div>
+    );
   }
 
   const handleLogin = (data: LoginData) => {
     loginMutation.mutate(data, {
-      onSuccess: () => navigate("/"),
+      onSuccess: (loggedInUser) => {
+        if (isAdminLogin) {
+          if (loggedInUser.role === "admin") {
+            navigate("/admin");
+          } else {
+            // Non-admin trying to login through admin portal
+            navigate("/");
+          }
+        } else {
+          navigate("/");
+        }
+      },
     });
   };
 
@@ -63,19 +95,33 @@ export default function AuthPage() {
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <div className="flex items-center justify-center space-x-2 mb-4">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <i className="fas fa-tasks text-white text-sm"></i>
+              <div className={`w-8 h-8 ${isAdminLogin ? 'bg-red-600' : 'bg-primary'} rounded-lg flex items-center justify-center`}>
+                <i className={`fas ${isAdminLogin ? 'fa-shield-alt' : 'fa-tasks'} text-white text-sm`}></i>
               </div>
-              <span className="text-xl font-bold text-gray-900">ProofWork</span>
+              <span className="text-xl font-bold text-gray-900">
+                ProofWork {isAdminLogin && 'Admin'}
+              </span>
             </div>
-            <CardTitle>Welcome Back</CardTitle>
+            {isAdminLogin && (
+              <Badge variant="destructive" className="mb-2">
+                Administrator Portal
+              </Badge>
+            )}
+            <CardTitle>{isAdminLogin ? 'Admin Login' : 'Welcome Back'}</CardTitle>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="login" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="login">Login</TabsTrigger>
-                <TabsTrigger value="register">Register</TabsTrigger>
-              </TabsList>
+              {!isAdminLogin && (
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="login">Login</TabsTrigger>
+                  <TabsTrigger value="register">Register</TabsTrigger>
+                </TabsList>
+              )}
+              {isAdminLogin && (
+                <div className="text-center mb-4">
+                  <p className="text-sm text-gray-600">Administrator Sign In</p>
+                </div>
+              )}
               
               <TabsContent value="login">
                 <Form {...loginForm}>
@@ -129,57 +175,84 @@ export default function AuthPage() {
                 </Form>
               </TabsContent>
               
-              <TabsContent value="register">
-                <Form {...registerForm}>
-                  <form onSubmit={registerForm.handleSubmit(handleRegister)} className="space-y-4">
-                    <FormField
-                      control={registerForm.control}
-                      name="username"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Username</FormLabel>
-                          <FormControl>
-                            <Input 
-                              {...field} 
-                              placeholder="Choose a username"
-                              data-testid="input-register-username"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={registerForm.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Password</FormLabel>
-                          <FormControl>
-                            <Input 
-                              {...field} 
-                              type="password" 
-                              placeholder="Choose a password"
-                              data-testid="input-register-password"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <Button 
-                      type="submit" 
-                      className="w-full"
-                      disabled={registerMutation.isPending}
-                      data-testid="button-register"
-                    >
-                      {registerMutation.isPending ? "Creating account..." : "Create Account"}
-                    </Button>
-                  </form>
-                </Form>
-              </TabsContent>
+              {!isAdminLogin && (
+                <TabsContent value="register">
+                  <Form {...registerForm}>
+                    <form onSubmit={registerForm.handleSubmit(handleRegister)} className="space-y-4">
+                      <FormField
+                        control={registerForm.control}
+                        name="username"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Username</FormLabel>
+                            <FormControl>
+                              <Input 
+                                {...field} 
+                                placeholder="Choose a username"
+                                data-testid="input-register-username"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={registerForm.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Password</FormLabel>
+                            <FormControl>
+                              <Input 
+                                {...field} 
+                                type="password" 
+                                placeholder="Choose a password"
+                                data-testid="input-register-password"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <Button 
+                        type="submit" 
+                        className="w-full"
+                        disabled={registerMutation.isPending}
+                        data-testid="button-register"
+                      >
+                        {registerMutation.isPending ? "Creating account..." : "Create Account"}
+                      </Button>
+                    </form>
+                  </Form>
+                </TabsContent>
+              )}
+              
+              {/* Navigation Links */}
+              <div className="mt-4 text-center">
+                {isAdminLogin ? (
+                  <Button 
+                    variant="link" 
+                    onClick={() => navigate("/auth")}
+                    className="text-sm text-gray-600"
+                    data-testid="link-user-login"
+                  >
+                    <i className="fas fa-user mr-2"></i>
+                    User Login Instead
+                  </Button>
+                ) : (
+                  <Button 
+                    variant="link" 
+                    onClick={() => navigate("/admin/login")}
+                    className="text-sm text-gray-600"
+                    data-testid="link-admin-login"
+                  >
+                    <i className="fas fa-shield-alt mr-2"></i>
+                    Admin Login
+                  </Button>
+                )}
+              </div>
             </Tabs>
           </CardContent>
         </Card>

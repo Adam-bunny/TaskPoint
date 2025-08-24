@@ -29,6 +29,64 @@ const typeLabels = {
   documentation: "Documentation",
 };
 
+function TaskCard({ task }: { task: any }) {
+  return (
+    <div
+      className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+      data-testid={`task-item-${task.id}`}
+    >
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <div className="flex items-center space-x-3 mb-2">
+            <h4 className="font-medium text-gray-900" data-testid={`task-title-${task.id}`}>
+              {task.title}
+            </h4>
+            <Badge className={statusColors[task.status]} data-testid={`task-status-${task.id}`}>
+              {task.status}
+            </Badge>
+            <Badge className={typeColors[task.type]} data-testid={`task-type-${task.id}`}>
+              {typeLabels[task.type]}
+            </Badge>
+          </div>
+          <p className="text-sm text-gray-600 mb-3" data-testid={`task-description-${task.id}`}>
+            {task.description}
+          </p>
+          {task.status === "rejected" && task.rejectionReason && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
+              <p className="text-sm text-red-700 font-medium mb-1">Rejection Reason:</p>
+              <p className="text-sm text-red-600" data-testid={`task-rejection-${task.id}`}>
+                {task.rejectionReason}
+              </p>
+            </div>
+          )}
+          <div className="flex items-center space-x-4 text-sm text-gray-500">
+            <span>
+              <i className="fas fa-calendar-alt mr-1"></i>
+              {formatDistanceToNow(new Date(task.createdAt), { addSuffix: true })}
+            </span>
+            <span>
+              <i className="fas fa-star mr-1"></i>
+              {task.points} points
+            </span>
+            {task.status === "approved" && (
+              <span className="text-green-600">
+                <i className="fas fa-check mr-1"></i>
+                Approved
+              </span>
+            )}
+            {task.assignedTo && (
+              <span className="text-blue-600">
+                <i className="fas fa-user-tag mr-1"></i>
+                Assigned Task
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function TaskList() {
   const { data: tasks = [], isLoading } = useQuery<Task[]>({
     queryKey: ["/api/tasks/my"],
@@ -68,67 +126,61 @@ export default function TaskList() {
         {tasks.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             <i className="fas fa-tasks text-4xl mb-4 text-gray-300"></i>
-            <p>No tasks submitted yet</p>
-            <p className="text-sm">Submit your first task to get started!</p>
+            <p>No tasks yet</p>
+            <p className="text-sm">Submit your first task or wait for assignments!</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {tasks.map((task) => (
-              <div
-                key={task.id}
-                className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                data-testid={`task-item-${task.id}`}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <h4 className="font-medium text-gray-900" data-testid={`task-title-${task.id}`}>
-                        {task.title}
-                      </h4>
-                      <Badge className={statusColors[task.status]} data-testid={`task-status-${task.id}`}>
-                        {task.status}
-                      </Badge>
-                      <Badge className={typeColors[task.type]} data-testid={`task-type-${task.id}`}>
-                        {typeLabels[task.type]}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-gray-600 mb-3" data-testid={`task-description-${task.id}`}>
-                      {task.description}
-                    </p>
-                    {task.status === "rejected" && task.rejectionReason && (
-                      <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
-                        <p className="text-sm text-red-700 font-medium mb-1">Rejection Reason:</p>
-                        <p className="text-sm text-red-600" data-testid={`task-rejection-${task.id}`}>
-                          {task.rejectionReason}
-                        </p>
-                      </div>
-                    )}
-                    <div className="flex items-center space-x-4 text-sm text-gray-500">
-                      <span>
-                        <i className="fas fa-calendar-alt mr-1"></i>
-                        {formatDistanceToNow(new Date(task.createdAt), { addSuffix: true })}
-                      </span>
-                      <span>
-                        <i className="fas fa-star mr-1"></i>
-                        {task.points} points
-                      </span>
-                      {task.status === "approved" && (
-                        <span className="text-green-600">
-                          <i className="fas fa-check mr-1"></i>
-                          Approved
-                        </span>
-                      )}
-                      {task.assignedTo && (
-                        <span className="text-blue-600">
-                          <i className="fas fa-user-tag mr-1"></i>
-                          Assigned Task
-                        </span>
-                      )}
-                    </div>
-                  </div>
+          <div className="space-y-8">
+            {/* Pending Tasks Section */}
+            {tasks.filter(task => ["pending", "assigned", "in_progress", "completed"].includes(task.status)).length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold mb-4 flex items-center">
+                  <i className="fas fa-clock w-5 h-5 mr-2 text-yellow-600"></i>
+                  Pending Tasks ({tasks.filter(task => ["pending", "assigned", "in_progress", "completed"].includes(task.status)).length})
+                </h3>
+                <div className="space-y-4">
+                  {tasks
+                    .filter(task => ["pending", "assigned", "in_progress", "completed"].includes(task.status))
+                    .map((task) => (
+                      <TaskCard key={task.id} task={task} />
+                    ))}
                 </div>
               </div>
-            ))}
+            )}
+
+            {/* Completed Tasks Section */}
+            {tasks.filter(task => task.status === "approved").length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold mb-4 flex items-center">
+                  <i className="fas fa-check-circle w-5 h-5 mr-2 text-green-600"></i>
+                  Completed Tasks ({tasks.filter(task => task.status === "approved").length})
+                </h3>
+                <div className="space-y-4">
+                  {tasks
+                    .filter(task => task.status === "approved")
+                    .map((task) => (
+                      <TaskCard key={task.id} task={task} />
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {/* Rejected Tasks Section */}
+            {tasks.filter(task => task.status === "rejected").length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold mb-4 flex items-center">
+                  <i className="fas fa-times-circle w-5 h-5 mr-2 text-red-600"></i>
+                  Rejected Tasks ({tasks.filter(task => task.status === "rejected").length})
+                </h3>
+                <div className="space-y-4">
+                  {tasks
+                    .filter(task => task.status === "rejected")
+                    .map((task) => (
+                      <TaskCard key={task.id} task={task} />
+                    ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </CardContent>

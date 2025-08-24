@@ -107,7 +107,7 @@ export const updateTaskSchema = createInsertSchema(tasks).pick({
   points: true,
   rejectionReason: true,
 }).extend({
-  status: z.enum(["approved", "rejected", "in_progress", "completed"]),
+  status: z.enum(["approved", "rejected", "in_progress", "completed", "assigned"]),
 });
 
 export const completeTaskSchema = z.object({

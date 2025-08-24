@@ -150,6 +150,14 @@ export function registerRoutes(app: Express): Server {
         }
       }
 
+      // If rejected task was assigned, reassign it
+      if (validatedData.status === "rejected" && task.assignedTo) {
+        await storage.updateTask(id, {
+          status: "assigned" as const,
+          rejectionReason: validatedData.rejectionReason,
+        });
+      }
+
       // Notify the task submitter about the review decision
       app.locals.sendNotification(task.submittedBy, {
         type: 'task_reviewed',
@@ -242,7 +250,54 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Complete assigned task with proof upload
+  // Complete assigned task without file upload (direct completion)
+  app.post("/api/tasks/:id/complete-assigned", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const taskId = req.params.id;
+      const task = await storage.getTaskById(taskId);
+
+      if (!task || task.assignedTo !== req.user!.id) {
+        return res.status(404).json({ message: "Task not found or not assigned to you" });
+      }
+
+      if (task.status !== "assigned" && task.status !== "in_progress") {
+        return res.status(400).json({ message: "Task cannot be completed" });
+      }
+
+      // For assigned tasks, complete directly without requiring proof upload
+      const updatedTask = await storage.updateTask(taskId, {
+        status: "approved" as const,
+        reviewedBy: task.assignedBy || undefined, // Auto-approve assigned tasks
+        reviewedAt: new Date(),
+      });
+
+      // Award points immediately for assigned tasks
+      if (task.points) {
+        await storage.updateUserPoints(req.user!.id, task.points);
+      }
+
+      // Notify the admin who assigned the task
+      if (task.assignedBy) {
+        app.locals.sendNotification(task.assignedBy, {
+          type: 'task_completed',
+          title: 'Assigned Task Completed',
+          message: `${req.user!.username} has completed the assigned task: "${task.title}" and earned ${task.points} points.`,
+          taskId: task.id,
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      res.json(updatedTask);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to complete task" });
+    }
+  });
+
+  // Complete assigned task with proof upload (for user-submitted tasks)
   app.post("/api/tasks/:id/complete", upload.single('proofFile'), async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);
@@ -338,17 +393,18 @@ export function registerRoutes(app: Express): Server {
     
     ws.on('close', () => {
       // Remove client from map
-      for (const [userId, client] of clients.entries()) {
+      const entriesToDelete: string[] = [];
+      clients.forEach((client, userId) => {
         if (client === ws) {
-          clients.delete(userId);
-          break;
+          entriesToDelete.push(userId);
         }
-      }
+      });
+      entriesToDelete.forEach(userId => clients.delete(userId));
     });
   });
   
   // Helper function to send notifications
-  app.locals.sendNotification = (userId, notification) => {
+  app.locals.sendNotification = (userId: string, notification: any) => {
     const client = clients.get(userId);
     if (client && client.readyState === 1) { // WebSocket.OPEN
       client.send(JSON.stringify(notification));
@@ -356,12 +412,13 @@ export function registerRoutes(app: Express): Server {
   };
   
   // Helper function to notify all admins
-  app.locals.notifyAdmins = async (notification) => {
+  app.locals.notifyAdmins = async (notification: any) => {
     try {
       // Get all admin users
-      const adminUsers = await storage.db?.select().from(storage.users).where(storage.eq(storage.users.role, "admin")) || [];
+      const adminUsers = await storage.getAllUsers();
+      const admins = adminUsers.filter(user => user.role === "admin");
       
-      adminUsers.forEach(admin => {
+      admins.forEach((admin: any) => {
         const client = clients.get(admin.id);
         if (client && client.readyState === 1) {
           client.send(JSON.stringify(notification));

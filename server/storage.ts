@@ -42,11 +42,11 @@ export interface IStorage {
     activeUsers: number;
   }>;
 
-  sessionStore: session.SessionStore;
+  sessionStore: any;
 }
 
 export class DatabaseStorage implements IStorage {
-  sessionStore: session.SessionStore;
+  sessionStore: any;
 
   constructor() {
     this.sessionStore = new PostgresSessionStore({ 
@@ -78,7 +78,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllUsers(): Promise<User[]> {
-    return await db.select().from(users).where(eq(users.role, "user"));
+    return await db.select().from(users);
   }
 
   async createTask(task: InsertTask & { submittedBy: string; points: number }): Promise<Task> {

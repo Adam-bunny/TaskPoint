@@ -1,16 +1,12 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { 
   Calendar, 
   Clock, 
-  Upload, 
   CheckCircle, 
   AlertTriangle, 
   FileText, 
@@ -109,20 +105,6 @@ function TaskCard({ task, onComplete }: { task: Task; onComplete: (task: Task) =
             </div>
           )}
         </div>
-        
-        {task.status === "completed" && task.proofFile && (
-          <div className="bg-purple-50 p-3 rounded-lg">
-            <div className="flex items-center space-x-2">
-              <CheckCircle className="w-4 h-4 text-purple-600" />
-              <span className="text-sm text-purple-700">
-                Proof submitted - waiting for admin review
-              </span>
-            </div>
-            <p className="text-xs text-purple-600 mt-1">
-              Completed: {task.completedAt ? format(new Date(task.completedAt), 'MMM dd, yyyy HH:mm') : 'Unknown'}
-            </p>
-          </div>
-        )}
 
         {task.status === "approved" && (
           <div className="bg-green-50 p-3 rounded-lg">
@@ -141,8 +123,8 @@ function TaskCard({ task, onComplete }: { task: Task; onComplete: (task: Task) =
             className="w-full"
             data-testid={`button-complete-task-${task.id}`}
           >
-            <Upload className="w-4 h-4 mr-2" />
-            {task.status === "assigned" ? "Start & Complete Task" : "Upload Proof"}
+            <CheckCircle className="w-4 h-4 mr-2" />
+            Complete Task
           </Button>
         )}
       </CardContent>
@@ -150,25 +132,21 @@ function TaskCard({ task, onComplete }: { task: Task; onComplete: (task: Task) =
   );
 }
 
-function TaskCompletionDialog({ task, open, onOpenChange }: { 
-  task: Task | null; 
-  open: boolean; 
-  onOpenChange: (open: boolean) => void; 
-}) {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+export default function AssignedTasks() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const { data: assignedTasks = [], isLoading } = useQuery<Task[]>({
+    queryKey: ["/api/tasks/assigned"],
+  });
+
   const completeMutation = useMutation({
     mutationFn: async (taskId: string) => {
-      const formData = new FormData();
-      if (selectedFile) {
-        formData.append('proofFile', selectedFile);
-      }
-      
-      const response = await fetch(`/api/tasks/${taskId}/complete`, {
+      const response = await fetch(`/api/tasks/${taskId}/complete-assigned`, {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
       
       if (!response.ok) {
@@ -181,11 +159,11 @@ function TaskCompletionDialog({ task, open, onOpenChange }: {
     onSuccess: () => {
       toast({
         title: "Task Completed!",
-        description: "Your proof has been submitted for admin review.",
+        description: "Your task has been completed and points awarded.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks/assigned"] });
-      setSelectedFile(null);
-      onOpenChange(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/user/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/leaderboard"] });
     },
     onError: (error: Error) => {
       toast({
@@ -196,132 +174,8 @@ function TaskCompletionDialog({ task, open, onOpenChange }: {
     },
   });
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      if (file.type !== 'application/pdf') {
-        toast({
-          title: "Invalid File Type",
-          description: "Please upload a PDF file as proof of completion.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      if (file.size > 10 * 1024 * 1024) { // 10MB
-        toast({
-          title: "File Too Large",
-          description: "Please upload a file smaller than 10MB.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      setSelectedFile(file);
-    }
-  };
-
-  const handleSubmit = () => {
-    if (!task) return;
-    
-    if (!selectedFile) {
-      toast({
-        title: "No Proof File",
-        description: "Please upload a PDF file as proof of completion.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    completeMutation.mutate(task.id);
-  };
-
-  if (!task) return null;
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center">
-            <CheckCircle className="w-5 h-5 mr-2 text-green-600" />
-            Complete Task: {task.title}
-          </DialogTitle>
-        </DialogHeader>
-        
-        <div className="space-y-6">
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h4 className="font-medium mb-2">Task Description:</h4>
-            <p className="text-sm text-gray-600">{task.description}</p>
-          </div>
-          
-          <div>
-            <h4 className="font-medium mb-3">Upload Proof of Completion (PDF only):</h4>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-              <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <div className="space-y-2">
-                <input
-                  type="file"
-                  accept=".pdf"
-                  onChange={handleFileChange}
-                  className="hidden"
-                  id="proof-file"
-                  data-testid="input-proof-file"
-                />
-                <label
-                  htmlFor="proof-file"
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer"
-                >
-                  Choose PDF File
-                </label>
-                <p className="text-xs text-gray-500">Maximum file size: 10MB</p>
-              </div>
-            </div>
-            
-            {selectedFile && (
-              <div className="mt-3 p-3 bg-green-50 rounded-lg">
-                <div className="flex items-center space-x-2">
-                  <FileText className="w-4 h-4 text-green-600" />
-                  <span className="text-sm text-green-700 font-medium">
-                    {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(1)} MB)
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
-          
-          <div className="flex justify-end space-x-3">
-            <Button 
-              variant="outline" 
-              onClick={() => onOpenChange(false)}
-              data-testid="button-cancel-completion"
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleSubmit}
-              disabled={!selectedFile || completeMutation.isPending}
-              data-testid="button-submit-completion"
-            >
-              {completeMutation.isPending ? "Submitting..." : "Submit Proof"}
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-export default function AssignedTasks() {
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
-
-  const { data: assignedTasks = [], isLoading } = useQuery<Task[]>({
-    queryKey: ["/api/tasks/assigned"],
-  });
-
   const handleCompleteTask = (task: Task) => {
-    setSelectedTask(task);
-    setDialogOpen(true);
+    completeMutation.mutate(task.id);
   };
 
   if (isLoading) {
@@ -391,12 +245,6 @@ export default function AssignedTasks() {
           )}
         </>
       )}
-
-      <TaskCompletionDialog 
-        task={selectedTask}
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-      />
     </div>
   );
 }

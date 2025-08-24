@@ -6,9 +6,12 @@ import { type Task } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
 
 const statusColors = {
-  pending: "bg-warning/10 text-warning",
-  approved: "bg-success/10 text-success",
-  rejected: "bg-error/10 text-error",
+  pending: "bg-yellow-100 text-yellow-800",
+  assigned: "bg-blue-100 text-blue-800",
+  in_progress: "bg-orange-100 text-orange-800",
+  completed: "bg-purple-100 text-purple-800",
+  approved: "bg-green-100 text-green-800",
+  rejected: "bg-red-100 text-red-800",
 };
 
 const typeColors = {

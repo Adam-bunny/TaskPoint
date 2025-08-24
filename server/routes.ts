@@ -1,13 +1,58 @@
 import type { Express } from "express";
+import express from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer } from "ws";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
-import { insertTaskSchema, updateTaskSchema, TASK_POINTS } from "@shared/schema";
+import { insertTaskSchema, updateTaskSchema, assignTaskSchema, completeTaskSchema, TASK_POINTS } from "@shared/schema";
+
+// Ensure upload directory exists
+const uploadDir = 'uploads/proof-files/';
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// File upload configuration
+const uploadStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1E9)}${path.extname(file.originalname)}`;
+    cb(null, uniqueName);
+  }
+});
+
+const upload = multer({ 
+  storage: uploadStorage,
+  fileFilter: (req, file, cb) => {
+    // Only allow PDF files
+    if (file.mimetype === 'application/pdf') {
+      cb(null, true);
+    } else {
+      cb(new Error('Only PDF files are allowed!'), false);
+    }
+  },
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  }
+});
 
 export function registerRoutes(app: Express): Server {
   // Setup authentication routes
   setupAuth(app);
+  
+  // Serve uploaded files
+  app.use('/uploads', (req, res, next) => {
+    // Only authenticated users can access uploads
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+    next();
+  }, express.static('uploads'));
 
   // Task submission
   app.post("/api/tasks", async (req, res) => {
@@ -138,6 +183,108 @@ export function registerRoutes(app: Express): Server {
       res.json(stats);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch user stats" });
+    }
+  });
+
+  // Admin: Assign task to user
+  app.post("/api/admin/assign-task", async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.role !== "admin") {
+      return res.sendStatus(403);
+    }
+
+    try {
+      const validatedData = assignTaskSchema.parse(req.body);
+      
+      const task = await storage.assignTask({
+        ...validatedData,
+        assignedBy: req.user!.id,
+        status: "assigned" as const,
+      });
+
+      // Notify the assigned user
+      app.locals.sendNotification(validatedData.assignedTo, {
+        type: 'task_assigned',
+        title: 'New Task Assigned',
+        message: `You have been assigned a new ${validatedData.type} task: "${validatedData.title}". Deadline: ${validatedData.deadline.toLocaleDateString()}`,
+        taskId: task.id,
+        deadline: validatedData.deadline.toISOString(),
+        timestamp: new Date().toISOString(),
+      });
+
+      res.status(201).json(task);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid task assignment data" });
+    }
+  });
+
+  // Get assigned tasks for user
+  app.get("/api/tasks/assigned", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const tasks = await storage.getAssignedTasks(req.user!.id);
+      res.json(tasks);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch assigned tasks" });
+    }
+  });
+
+  // Complete assigned task with proof upload
+  app.post("/api/tasks/:id/complete", upload.single('proofFile'), async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+
+    try {
+      const taskId = req.params.id;
+      const task = await storage.getTaskById(taskId);
+
+      if (!task || task.assignedTo !== req.user!.id) {
+        return res.status(404).json({ message: "Task not found or not assigned to you" });
+      }
+
+      if (task.status !== "assigned" && task.status !== "in_progress") {
+        return res.status(400).json({ message: "Task cannot be completed" });
+      }
+
+      const proofFilePath = req.file ? `/uploads/proof-files/${req.file.filename}` : undefined;
+
+      const updatedTask = await storage.completeTask(taskId, {
+        proofFile: proofFilePath,
+        status: "completed" as const,
+        completedAt: new Date(),
+      });
+
+      // Notify the admin who assigned the task
+      if (task.assignedBy) {
+        app.locals.sendNotification(task.assignedBy, {
+          type: 'task_completed',
+          title: 'Task Completed',
+          message: `${req.user!.username} has completed the assigned task: "${task.title}" and uploaded proof for review.`,
+          taskId: task.id,
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      res.json(updatedTask);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to complete task" });
+    }
+  });
+
+  // Get all users (for admin task assignment)
+  app.get("/api/admin/users", async (req, res) => {
+    if (!req.isAuthenticated() || req.user!.role !== "admin") {
+      return res.sendStatus(403);
+    }
+
+    try {
+      const users = await storage.getAllUsers();
+      res.json(users);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch users" });
     }
   });
 

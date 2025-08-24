@@ -4,8 +4,10 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import TaskSubmissionForm from "@/components/task-submission-form";
 import TaskList from "@/components/task-list";
+import AssignedTasks from "@/components/assigned-tasks";
 import Leaderboard from "@/components/leaderboard";
 import { useQuery } from "@tanstack/react-query";
 
@@ -145,14 +147,41 @@ export default function HomePage() {
           </Card>
         </div>
 
-        {/* Task Submission and Tasks Overview */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-          <div className="lg:col-span-1">
-            <TaskSubmissionForm />
-          </div>
-          <div className="lg:col-span-2">
-            <TaskList />
-          </div>
+        {/* Task Management */}
+        <div className="mb-8">
+          <Tabs defaultValue="assigned" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="assigned">Assigned Tasks</TabsTrigger>
+              <TabsTrigger value="submit">Submit Task</TabsTrigger>
+              <TabsTrigger value="history">My Tasks</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="assigned" className="mt-6">
+              <AssignedTasks />
+            </TabsContent>
+            
+            <TabsContent value="submit" className="mt-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-1">
+                  <TaskSubmissionForm />
+                </div>
+                <div className="lg:col-span-2">
+                  <div className="bg-white rounded-lg border p-6">
+                    <h3 className="text-lg font-semibold mb-4">Submit Your Own Tasks</h3>
+                    <p className="text-gray-600 text-sm">
+                      You can submit your own completed work for review. 
+                      Fill out the form with details about what you've accomplished, 
+                      and an admin will review and award points accordingly.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="history" className="mt-6">
+              <TaskList />
+            </TabsContent>
+          </Tabs>
         </div>
 
         {/* Leaderboard */}

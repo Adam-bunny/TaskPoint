@@ -1,6 +1,6 @@
-import { users, tasks, type User, type InsertUser, type Task, type InsertTask, type UpdateTask } from "@shared/schema";
+import { users, tasks, type User, type InsertUser, type Task, type InsertTask, type UpdateTask, type AssignTask, type CompleteTask } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and, sql, isNull, isNotNull } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -11,14 +11,18 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser & { role?: "user" | "admin" }): Promise<User>;
+  getAllUsers(): Promise<User[]>;
   
   // Task operations
   createTask(task: InsertTask & { submittedBy: string; points: number }): Promise<Task>;
+  assignTask(task: AssignTask & { assignedBy: string; status: "assigned" }): Promise<Task>;
   getTaskById(id: string): Promise<Task | undefined>;
   getTasksByUser(userId: string): Promise<Task[]>;
+  getAssignedTasks(userId: string): Promise<Task[]>;
   getPendingTasks(): Promise<Task[]>;
   getAllTasks(): Promise<Task[]>;
   updateTask(id: string, updates: Partial<UpdateTask & { reviewedBy: string; reviewedAt: Date }>): Promise<Task | undefined>;
+  completeTask(id: string, completion: CompleteTask & { status: "completed"; completedAt: Date }): Promise<Task | undefined>;
   
   // Points and leaderboard
   updateUserPoints(userId: string, pointsToAdd: number): Promise<void>;
@@ -73,12 +77,33 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users).where(eq(users.role, "user"));
+  }
+
   async createTask(task: InsertTask & { submittedBy: string; points: number }): Promise<Task> {
     const [newTask] = await db
       .insert(tasks)
       .values(task)
       .returning();
     return newTask;
+  }
+
+  async assignTask(assignTask: AssignTask & { assignedBy: string; status: "assigned" }): Promise<Task> {
+    const [task] = await db
+      .insert(tasks)
+      .values({
+        title: assignTask.title,
+        description: assignTask.description,
+        type: assignTask.type,
+        points: assignTask.points,
+        assignedTo: assignTask.assignedTo,
+        assignedBy: assignTask.assignedBy,
+        deadline: assignTask.deadline,
+        status: assignTask.status,
+      })
+      .returning();
+    return task;
   }
 
   async getTaskById(id: string): Promise<Task | undefined> {
@@ -91,6 +116,14 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(tasks)
       .where(eq(tasks.submittedBy, userId))
+      .orderBy(desc(tasks.createdAt));
+  }
+
+  async getAssignedTasks(userId: string): Promise<Task[]> {
+    return await db
+      .select()
+      .from(tasks)
+      .where(eq(tasks.assignedTo, userId))
       .orderBy(desc(tasks.createdAt));
   }
 
@@ -113,6 +146,15 @@ export class DatabaseStorage implements IStorage {
     const [updatedTask] = await db
       .update(tasks)
       .set(updates)
+      .where(eq(tasks.id, id))
+      .returning();
+    return updatedTask || undefined;
+  }
+
+  async completeTask(id: string, completion: CompleteTask & { status: "completed"; completedAt: Date }): Promise<Task | undefined> {
+    const [updatedTask] = await db
+      .update(tasks)
+      .set(completion)
       .where(eq(tasks.id, id))
       .returning();
     return updatedTask || undefined;

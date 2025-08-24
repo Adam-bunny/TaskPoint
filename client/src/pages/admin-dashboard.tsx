@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import TaskReviewQueue from "@/components/task-review-queue";
+import { TaskAssignmentForm } from "@/components/task-assignment-form";
 import { useQuery } from "@tanstack/react-query";
 
 export default function AdminDashboard() {
@@ -144,6 +145,14 @@ export default function AdminDashboard() {
               </div>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Actions & Task Management */}
+        <div className="mb-8">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">Task Management</h2>
+            <TaskAssignmentForm />
+          </div>
         </div>
 
         {/* Task Review Section */}

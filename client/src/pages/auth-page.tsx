@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -53,19 +53,24 @@ export default function AuthPage() {
     },
   });
 
-  // Redirect if already logged in
-  if (user) {
-    if (isAdminLogin && user.role !== "admin") {
-      // Non-admin trying to access admin login - redirect to user dashboard
-      navigate("/");
-    } else if (isAdminLogin && user.role === "admin") {
-      // Admin already logged in - go to admin dashboard
-      navigate("/admin");
-    } else {
-      // Regular user login - go to user dashboard
-      navigate("/");
+  // Handle redirects in useEffect to avoid setState during render
+  useEffect(() => {
+    if (user) {
+      if (isAdminLogin && user.role !== "admin") {
+        // Non-admin trying to access admin login - redirect to user dashboard
+        navigate("/");
+      } else if (isAdminLogin && user.role === "admin") {
+        // Admin already logged in - go to admin dashboard
+        navigate("/admin");
+      } else {
+        // Regular user login - go to user dashboard
+        navigate("/");
+      }
     }
-    // Show loading while redirecting
+  }, [user, isAdminLogin, navigate]);
+
+  // Show loading while redirecting
+  if (user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">

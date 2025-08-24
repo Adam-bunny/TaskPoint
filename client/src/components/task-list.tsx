@@ -29,7 +29,7 @@ const typeLabels = {
   documentation: "Documentation",
 };
 
-function TaskCard({ task }: { task: any }) {
+function TaskCard({ task }: { task: Task }) {
   return (
     <div
       className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
@@ -41,11 +41,11 @@ function TaskCard({ task }: { task: any }) {
             <h4 className="font-medium text-gray-900" data-testid={`task-title-${task.id}`}>
               {task.title}
             </h4>
-            <Badge className={statusColors[task.status]} data-testid={`task-status-${task.id}`}>
+            <Badge className={statusColors[task.status as keyof typeof statusColors]} data-testid={`task-status-${task.id}`}>
               {task.status}
             </Badge>
-            <Badge className={typeColors[task.type]} data-testid={`task-type-${task.id}`}>
-              {typeLabels[task.type]}
+            <Badge className={typeColors[task.type as keyof typeof typeColors]} data-testid={`task-type-${task.id}`}>
+              {typeLabels[task.type as keyof typeof typeLabels]}
             </Badge>
           </div>
           <p className="text-sm text-gray-600 mb-3" data-testid={`task-description-${task.id}`}>

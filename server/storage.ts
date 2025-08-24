@@ -10,7 +10,7 @@ const PostgresSessionStore = connectPg(session);
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  createUser(user: InsertUser & { role?: "user" | "admin" }): Promise<User>;
   
   // Task operations
   createTask(task: InsertTask & { submittedBy: string; points: number }): Promise<Task>;
@@ -61,10 +61,14 @@ export class DatabaseStorage implements IStorage {
     return user || undefined;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
+  async createUser(insertUser: InsertUser & { role?: "user" | "admin" }): Promise<User> {
     const [user] = await db
       .insert(users)
-      .values(insertUser)
+      .values({
+        username: insertUser.username,
+        password: insertUser.password,
+        role: insertUser.role || "user",
+      })
       .returning();
     return user;
   }

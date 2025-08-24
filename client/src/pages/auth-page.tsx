@@ -9,15 +9,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertUserSchema } from "@shared/schema";
+import { insertUserSchema, insertAdminUserSchema } from "@shared/schema";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { z } from "zod";
 
 const loginSchema = insertUserSchema;
 const registerSchema = insertUserSchema;
+const adminRegisterSchema = insertAdminUserSchema;
 
 type LoginData = z.infer<typeof loginSchema>;
 type RegisterData = z.infer<typeof registerSchema>;
+type AdminRegisterData = z.infer<typeof adminRegisterSchema>;
 
 export default function AuthPage() {
   const { user, loginMutation, registerMutation } = useAuth();
@@ -39,6 +41,15 @@ export default function AuthPage() {
     defaultValues: {
       username: "",
       password: "",
+    },
+  });
+
+  const adminRegisterForm = useForm<AdminRegisterData>({
+    resolver: zodResolver(adminRegisterSchema),
+    defaultValues: {
+      username: "",
+      password: "",
+      adminCode: "",
     },
   });
 
@@ -88,6 +99,18 @@ export default function AuthPage() {
     });
   };
 
+  const handleAdminRegister = (data: AdminRegisterData) => {
+    registerMutation.mutate(data, {
+      onSuccess: (user) => {
+        if (user.role === "admin") {
+          navigate("/admin");
+        } else {
+          navigate("/");
+        }
+      },
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Left side - Forms */}
@@ -120,7 +143,15 @@ export default function AuthPage() {
               {isAdminLogin && (
                 <div className="text-center mb-4">
                   <p className="text-sm text-gray-600">Administrator Sign In</p>
+                  <p className="text-xs text-red-600 mt-1">Admin Code Required for Registration</p>
                 </div>
+              )}
+              
+              {isAdminLogin && (
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="login">Login</TabsTrigger>
+                  <TabsTrigger value="admin-register">Create Admin</TabsTrigger>
+                </TabsList>
               )}
               
               <TabsContent value="login">
@@ -223,6 +254,80 @@ export default function AuthPage() {
                         data-testid="button-register"
                       >
                         {registerMutation.isPending ? "Creating account..." : "Create Account"}
+                      </Button>
+                    </form>
+                  </Form>
+                </TabsContent>
+              )}
+              
+              {/* Admin Registration Tab */}
+              {isAdminLogin && (
+                <TabsContent value="admin-register">
+                  <Form {...adminRegisterForm}>
+                    <form onSubmit={adminRegisterForm.handleSubmit(handleAdminRegister)} className="space-y-4">
+                      <FormField
+                        control={adminRegisterForm.control}
+                        name="username"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Admin Username</FormLabel>
+                            <FormControl>
+                              <Input 
+                                {...field} 
+                                placeholder="Must contain 'admin'"
+                                data-testid="input-admin-username"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={adminRegisterForm.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Password</FormLabel>
+                            <FormControl>
+                              <Input 
+                                {...field} 
+                                type="password" 
+                                placeholder="Secure admin password"
+                                data-testid="input-admin-password"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={adminRegisterForm.control}
+                        name="adminCode"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Admin Code</FormLabel>
+                            <FormControl>
+                              <Input 
+                                {...field} 
+                                placeholder="Enter admin authorization code"
+                                data-testid="input-admin-code"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                            <p className="text-xs text-gray-500">Contact system administrator for the code</p>
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <Button 
+                        type="submit" 
+                        className="w-full"
+                        disabled={registerMutation.isPending}
+                        data-testid="button-admin-register"
+                      >
+                        {registerMutation.isPending ? "Creating admin..." : "Create Admin Account"}
                       </Button>
                     </form>
                   </Form>

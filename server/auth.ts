@@ -53,7 +53,7 @@ export function setupAuth(app: Express) {
   );
 
   passport.serializeUser((user, done) => done(null, user.id));
-  passport.deserializeUser(async (id: number, done) => {
+  passport.deserializeUser(async (id: string, done) => {
     const user = await storage.getUser(id);
     done(null, user);
   });
@@ -64,9 +64,13 @@ export function setupAuth(app: Express) {
       return res.status(400).send("Username already exists");
     }
 
+    // Check if this is admin registration
+    const isAdminRegistration = req.body.adminCode === "ADMIN2024" && req.body.username.includes("admin");
+    
     const user = await storage.createUser({
-      ...req.body,
+      username: req.body.username,
       password: await hashPassword(req.body.password),
+      role: isAdminRegistration ? "admin" : "user",
     });
 
     req.login(user, (err) => {

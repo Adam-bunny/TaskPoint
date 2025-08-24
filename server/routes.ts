@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import { WebSocketServer } from "ws";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
 import { insertTaskSchema, updateTaskSchema, TASK_POINTS } from "@shared/schema";
@@ -22,6 +23,15 @@ export function registerRoutes(app: Express): Server {
         ...validatedData,
         submittedBy: req.user!.id,
         points,
+      });
+
+      // Notify all admins about new task submission
+      app.locals.notifyAdmins({
+        type: 'task_submitted',
+        title: 'New Task Submitted',
+        message: `User ${req.user!.username} submitted a new ${validatedData.type} task: "${validatedData.title}"`,
+        taskId: task.id,
+        timestamp: new Date().toISOString(),
       });
 
       res.status(201).json(task);
@@ -84,6 +94,19 @@ export function registerRoutes(app: Express): Server {
         await storage.updateUserPoints(task.submittedBy, validatedData.points);
       }
 
+      // Notify the task submitter about the review decision
+      app.locals.sendNotification(task.submittedBy, {
+        type: 'task_reviewed',
+        title: validatedData.status === 'approved' ? 'Task Approved!' : 'Task Rejected',
+        message: validatedData.status === 'approved' 
+          ? `Your task "${task.title}" was approved and you earned ${validatedData.points} points!`
+          : `Your task "${task.title}" was rejected. ${validatedData.rejectionReason || 'Please review and resubmit.'}`,
+        taskId: task.id,
+        status: validatedData.status,
+        points: validatedData.status === 'approved' ? validatedData.points : 0,
+        timestamp: new Date().toISOString(),
+      });
+
       res.json(updatedTask);
     } catch (error) {
       res.status(400).json({ message: "Invalid review data" });
@@ -133,5 +156,63 @@ export function registerRoutes(app: Express): Server {
   });
 
   const httpServer = createServer(app);
+  
+  // WebSocket server for real-time notifications
+  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  
+  // Store connected clients by user ID
+  const clients = new Map();
+  
+  wss.on('connection', (ws, request) => {
+    console.log('WebSocket client connected');
+    
+    ws.on('message', (message) => {
+      try {
+        const data = JSON.parse(message.toString());
+        if (data.type === 'identify' && data.userId) {
+          clients.set(data.userId, ws);
+          console.log(`User ${data.userId} identified for notifications`);
+        }
+      } catch (error) {
+        console.error('WebSocket message error:', error);
+      }
+    });
+    
+    ws.on('close', () => {
+      // Remove client from map
+      for (const [userId, client] of clients.entries()) {
+        if (client === ws) {
+          clients.delete(userId);
+          break;
+        }
+      }
+    });
+  });
+  
+  // Helper function to send notifications
+  app.locals.sendNotification = (userId, notification) => {
+    const client = clients.get(userId);
+    if (client && client.readyState === 1) { // WebSocket.OPEN
+      client.send(JSON.stringify(notification));
+    }
+  };
+  
+  // Helper function to notify all admins
+  app.locals.notifyAdmins = async (notification) => {
+    try {
+      // Get all admin users
+      const adminUsers = await storage.db?.select().from(storage.users).where(storage.eq(storage.users.role, "admin")) || [];
+      
+      adminUsers.forEach(admin => {
+        const client = clients.get(admin.id);
+        if (client && client.readyState === 1) {
+          client.send(JSON.stringify(notification));
+        }
+      });
+    } catch (error) {
+      console.error('Error notifying admins:', error);
+    }
+  };
+  
   return httpServer;
 }

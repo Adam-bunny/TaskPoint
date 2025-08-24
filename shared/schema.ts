@@ -57,6 +57,13 @@ export const tasksRelations = relations(tasks, ({ one }) => ({
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
+  role: true,
+}).extend({
+  role: z.enum(["user", "admin"]).optional(),
+});
+
+export const insertAdminUserSchema = insertUserSchema.extend({
+  adminCode: z.string().optional(),
 });
 
 export const insertTaskSchema = createInsertSchema(tasks).pick({

@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Leaderboard from "@/components/leaderboard";
 import { TaskAssignmentForm } from "@/components/task-assignment-form";
+import TaskReviewQueue from "@/components/task-review-queue";
 import { useQuery } from "@tanstack/react-query";
 
 interface AdminStats {
@@ -148,6 +149,11 @@ export default function AdminDashboard() {
             <h2 className="text-2xl font-bold text-gray-900">Task Assignment</h2>
             <TaskAssignmentForm />
           </div>
+        </div>
+
+        {/* Task Review & Grading Section */}
+        <div className="mb-8">
+          <TaskReviewQueue />
         </div>
 
         {/* Leaderboard Section */}

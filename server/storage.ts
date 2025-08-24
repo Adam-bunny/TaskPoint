@@ -1,6 +1,6 @@
 import { users, tasks, type User, type InsertUser, type Task, type InsertTask, type UpdateTask, type AssignTask, type CompleteTask } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, sql, isNull, isNotNull } from "drizzle-orm";
+import { eq, desc, and, or, sql, isNull, isNotNull } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -131,7 +131,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(tasks)
-      .where(eq(tasks.status, "pending"))
+      .where(or(eq(tasks.status, "pending"), eq(tasks.status, "completed")))
       .orderBy(desc(tasks.createdAt));
   }
 

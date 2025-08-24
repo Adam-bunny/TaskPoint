@@ -29,7 +29,7 @@ interface Task {
   completedAt?: string;
 }
 
-function TaskCard({ task, onComplete }: { task: Task; onComplete: (task: Task) => void }) {
+function TaskCard({ task }: { task: Task }) {
   const deadline = new Date(task.deadline);
   const isOverdue = deadline < new Date() && task.status !== "completed" && task.status !== "approved";
   const timeLeft = deadline.getTime() - new Date().getTime();
@@ -116,67 +116,15 @@ function TaskCard({ task, onComplete }: { task: Task; onComplete: (task: Task) =
             </div>
           </div>
         )}
-        
-        {(task.status === "assigned" || task.status === "in_progress") && (
-          <Button 
-            onClick={() => onComplete(task)}
-            className="w-full"
-            data-testid={`button-complete-task-${task.id}`}
-          >
-            <CheckCircle className="w-4 h-4 mr-2" />
-            Complete Task
-          </Button>
-        )}
       </CardContent>
     </Card>
   );
 }
 
 export default function AssignedTasks() {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-
   const { data: assignedTasks = [], isLoading } = useQuery<Task[]>({
     queryKey: ["/api/tasks/assigned"],
   });
-
-  const completeMutation = useMutation({
-    mutationFn: async (taskId: string) => {
-      const response = await fetch(`/api/tasks/${taskId}/complete-assigned`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to complete task');
-      }
-      
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Task Completed!",
-        description: "Your task has been completed and points awarded.",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks/assigned"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/user/stats"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/leaderboard"] });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Completion Failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleCompleteTask = (task: Task) => {
-    completeMutation.mutate(task.id);
-  };
 
   if (isLoading) {
     return (
@@ -219,7 +167,6 @@ export default function AssignedTasks() {
                   <TaskCard 
                     key={task.id} 
                     task={task} 
-                    onComplete={handleCompleteTask}
                   />
                 ))}
               </div>
@@ -237,7 +184,6 @@ export default function AssignedTasks() {
                   <TaskCard 
                     key={task.id} 
                     task={task} 
-                    onComplete={handleCompleteTask}
                   />
                 ))}
               </div>

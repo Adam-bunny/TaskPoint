@@ -187,6 +187,8 @@ export default function TaskReviewQueue() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks/pending"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/leaderboard"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user/stats"] });
       toast({
         title: "Task Reviewed",
         description: `Task has been ${variables.status}.`,

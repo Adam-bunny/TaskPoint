@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { type Task } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
 
@@ -58,24 +57,11 @@ export default function TaskList() {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle>My Tasks</CardTitle>
-          <p className="text-sm text-gray-600 mt-1">
-            Track your submitted tasks and their status
-          </p>
-        </div>
-        <Select defaultValue="all">
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Filter by status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="approved">Approved</SelectItem>
-            <SelectItem value="rejected">Rejected</SelectItem>
-          </SelectContent>
-        </Select>
+      <CardHeader>
+        <CardTitle>My Tasks</CardTitle>
+        <p className="text-sm text-gray-600 mt-1">
+          Your submitted tasks
+        </p>
       </CardHeader>
       
       <CardContent>

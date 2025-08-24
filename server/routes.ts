@@ -137,8 +137,12 @@ export function registerRoutes(app: Express): Server {
       });
 
       // Award points if approved
-      if (validatedData.status === "approved" && validatedData.points && task.submittedBy) {
-        await storage.updateUserPoints(task.submittedBy, validatedData.points);
+      if (validatedData.status === "approved" && validatedData.points) {
+        // For user-submitted tasks, award to submittedBy; for assigned tasks, award to assignedTo
+        const userToAward = task.submittedBy || task.assignedTo;
+        if (userToAward) {
+          await storage.updateUserPoints(userToAward, validatedData.points);
+        }
       }
 
       // Notify the task submitter about the review decision

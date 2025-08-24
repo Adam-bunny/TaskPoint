@@ -11,11 +11,18 @@ import AssignedTasks from "@/components/assigned-tasks";
 import Leaderboard from "@/components/leaderboard";
 import { useQuery } from "@tanstack/react-query";
 
+interface UserStats {
+  totalPoints: number;
+  completedTasks: number;
+  pendingTasks: number;
+  rank: number;
+}
+
 export default function HomePage() {
   const { user, logoutMutation } = useAuth();
   const [, navigate] = useLocation();
 
-  const { data: userStats } = useQuery({
+  const { data: userStats } = useQuery<UserStats>({
     queryKey: ["/api/user/stats"],
     enabled: !!user,
   });

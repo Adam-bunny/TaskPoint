@@ -3,15 +3,21 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import TaskReviewQueue from "@/components/task-review-queue";
-import { TaskAssignmentForm } from "@/components/task-assignment-form";
+import Leaderboard from "@/components/leaderboard";
 import { useQuery } from "@tanstack/react-query";
+
+interface AdminStats {
+  pendingTasks: number;
+  approvedToday: number;
+  pointsDistributed: number;
+  activeUsers: number;
+}
 
 export default function AdminDashboard() {
   const { user, logoutMutation } = useAuth();
   const [, navigate] = useLocation();
 
-  const { data: adminStats } = useQuery({
+  const { data: adminStats } = useQuery<AdminStats>({
     queryKey: ["/api/admin/stats"],
     enabled: !!user && user.role === "admin",
   });
@@ -147,16 +153,11 @@ export default function AdminDashboard() {
           </Card>
         </div>
 
-        {/* Actions & Task Management */}
+        {/* Leaderboard Section */}
         <div className="mb-8">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">Task Management</h2>
-            <TaskAssignmentForm />
-          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">User Leaderboard</h2>
+          <Leaderboard />
         </div>
-
-        {/* Task Review Section */}
-        <TaskReviewQueue />
       </div>
     </div>
   );
